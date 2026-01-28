@@ -85,14 +85,16 @@ Edit this file to set your goal, constraints, and initial facts.
 ### Run a Completion
 
 ```bash
-col run --context task.json --provider openai --prompt "What's the best approach?"
+col run --context task.json --provider openai --instruction "What's the best approach?"
 
 # Or use Anthropic
-col run --context task.json --provider anthropic --prompt "What's the best approach?"
+col run --context task.json --provider anthropic --instruction "What's the best approach?"
 
 # Or use Groq
-col run --context task.json --provider groq --prompt "What's the best approach?"
+col run --context task.json --provider groq --instruction "What's the best approach?"
 ```
+
+**Important:** The `--instruction` flag is ephemeral - it is NOT stored in the context file and does NOT persist across runs. Each run requires an explicit instruction.
 
 The model responds with an answer and suggested context updates. The context file is NOT modified.
 
@@ -110,21 +112,36 @@ Review and approve the suggested changes. Only approved changes are added to the
 col metrics --context task.json
 ```
 
-Shows context size, item counts, and estimated token usage.
+Shows context size, item counts, and approximate token usage (no cost estimation).
+
+### Run Artifacts
+
+Each `col run` automatically creates a run artifact in `.col/runs/<timestamp>.json` for replayability and debugging.
+
+Artifacts include:
+- Provider and model used
+- Prompt hash (for verifying deterministic rendering)
+- Latency (if available)
+- Token counts (if available)
+- Raw model output
+- Parsed JSON response (if valid)
+- Error information (if parsing failed)
+
+**Note:** Artifacts never modify the context file. They are for debugging and replayability only.
 
 ### Switch Providers Mid-Task
 
 ```bash
 # Start with OpenAI
-col run --context task.json --provider openai --prompt "Design the API"
+col run --context task.json --provider openai --instruction "Design the API"
 col apply --context task.json --response response.json
 
 # Continue with Claude
-col run --context task.json --provider anthropic --prompt "Now implement it"
+col run --context task.json --provider anthropic --instruction "Now implement it"
 col apply --context task.json --response response.json
 
 # Continue with Groq
-col run --context task.json --provider groq --prompt "Review and optimize"
+col run --context task.json --provider groq --instruction "Review and optimize"
 ```
 
 The context file works with any provider. No conversion needed.
@@ -159,6 +176,47 @@ Models must return:
 }
 ```
 
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph UserLayer [User Layer]
+        CLI[col CLI]
+        CTX[context.json]
+        RSP[response.json]
+    end
+
+    subgraph CoreLayer [Core Layer]
+        PB[PromptBuilder]
+        ORC[Orchestrator]
+        MRG[Merger]
+    end
+
+    subgraph ProviderLayer [Provider Layer]
+        OAI[OpenAI]
+        ANT[Anthropic]
+        GRQ[Groq]
+    end
+
+    CLI -->|load| CTX
+    CLI -->|run| ORC
+    CTX -->|read| PB
+    PB -->|system prompt| ORC
+    ORC -->|complete| OAI
+    ORC -->|complete| ANT
+    ORC -->|complete| GRQ
+    ORC -->|write| RSP
+    CLI -->|apply| MRG
+    RSP -->|read| MRG
+    MRG -->|update| CTX
+```
+
+**Data Flow:**
+1. `col run` loads the context file and builds a deterministic system prompt
+2. The orchestrator calls the selected provider with the prompt and ephemeral instruction
+3. The response is saved to an output file (never modifies context directly)
+4. `col apply` loads the response and merges approved updates into the context
+
 ## Design Principles
 
 1. **No chat history** - Only the structured context
@@ -167,6 +225,19 @@ Models must return:
 4. **No automation** - COL stops after every response
 5. **Append-only** - New items are added, never deleted automatically
 6. **User authority** - You approve all changes
+7. **Deterministic prompt rendering** - Same context always produces identical prompt structure. No timestamps, randomness, or run metadata in prompts.
+8. **Ephemeral instructions** - The `--instruction` flag is not persisted. It is used only for the current run and does not affect the context file.
+
+## Error Handling
+
+COL uses strict JSON parsing with no automatic retries or repair attempts:
+
+- Invalid JSON responses are saved to run artifacts and the output file
+- COL exits with an error code
+- No automatic retries or repair attempts
+- User must manually fix malformed responses
+
+This ensures predictable behavior and prevents hidden failures.
 
 ## What COL is NOT
 
@@ -174,6 +245,36 @@ Models must return:
 - A tool-calling platform
 - A memory system with hidden state
 - A chat interface
+
+## Limitations
+
+COL is intentionally minimal infrastructure. These are explicit design boundaries:
+
+- **No context pruning** - Context grows without bound. Users must manually manage size.
+- **No semantic deduplication** - Only exact string matches are deduplicated.
+- **No conflict resolution** - Contradictory facts/decisions are both preserved.
+- **No versioning** - Context files have no version history (use git).
+- **No multi-user support** - Single context file, single user.
+- **No streaming** - Responses are returned as complete JSON only.
+- **No automatic retries** - Failed API calls require manual re-run.
+- **No cost tracking** - Token counts shown, but no cost estimation.
+
+These limitations are features, not bugs. They keep COL simple and predictable.
+
+## Developer Utilities
+
+Two optional CLI commands for tooling integration:
+
+```bash
+# Validate a manually edited context file
+col validate context.json
+
+# Export the JSON Schema for IDE integration
+col schema
+col schema --output context-schema.json
+```
+
+These are developer utilities and are not required for normal usage.
 
 ## License
 
