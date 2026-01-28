@@ -12,6 +12,7 @@ setup(
         "python-dotenv>=1.0.0",
         "openai>=1.0.0",
         "anthropic>=0.18.0",
+        "groq>=0.4.0",
         "pyyaml>=6.0.0",
         "rich>=13.0.0",
     ],

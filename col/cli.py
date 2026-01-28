@@ -15,7 +15,7 @@ from . import __version__
 from .config import load_config
 from .core import build_prompt, merge_updates, run_completion
 from .core.orchestrator import InvalidResponseError
-from .providers import AnthropicProvider, OpenAIProvider
+from .providers import AnthropicProvider, GroqProvider, OpenAIProvider
 from .schema import Context, ModelResponse, SuggestedContextUpdates
 from .storage import init_context, load_context, save_context
 
@@ -33,6 +33,8 @@ def get_provider(provider_name: str, model: Optional[str] = None):
         return OpenAIProvider(model=model) if model else OpenAIProvider()
     elif provider_name in ("anthropic", "claude"):
         return AnthropicProvider(model=model) if model else AnthropicProvider()
+    elif provider_name == "groq":
+        return GroqProvider(model=model) if model else GroqProvider()
     else:
         raise ValueError(f"Unknown provider: {provider_name}")
 

@@ -32,16 +32,29 @@ Set your API keys as environment variables:
 ```bash
 export OPENAI_API_KEY="your-key"
 export ANTHROPIC_API_KEY="your-key"
+export GROQ_API_KEY="your-key"
 ```
 
-Optionally create a `col.yaml` for defaults:
+Optionally create a `col.yaml` in your working directory for defaults:
 
 ```yaml
-default_provider: openai
-default_model: gpt-4o
+default_provider: openai  # or anthropic, groq
+default_model: gpt-4o     # provider-specific model name
 default_context_file: context.json
 default_output_file: response.json
 ```
+
+**How col.yaml works:**
+- Place it in your working directory (where you run `col` commands)
+- Settings override built-in defaults
+- Environment variables override file settings
+- CLI flags override everything
+
+Priority (highest to lowest):
+1. CLI flags (e.g., `--provider openai`)
+2. Environment variables (e.g., `COL_DEFAULT_PROVIDER`)
+3. `col.yaml` settings
+4. Built-in defaults
 
 ## Usage
 
@@ -70,6 +83,12 @@ Edit this file to set your goal, constraints, and initial facts.
 
 ```bash
 col run --context task.json --provider openai --prompt "What's the best approach?"
+
+# Or use Anthropic
+col run --context task.json --provider anthropic --prompt "What's the best approach?"
+
+# Or use Groq
+col run --context task.json --provider groq --prompt "What's the best approach?"
 ```
 
 The model responds with an answer and suggested context updates. The context file is NOT modified.
@@ -99,6 +118,10 @@ col apply --context task.json --response response.json
 
 # Continue with Claude
 col run --context task.json --provider anthropic --prompt "Now implement it"
+col apply --context task.json --response response.json
+
+# Continue with Groq
+col run --context task.json --provider groq --prompt "Review and optimize"
 ```
 
 The context file works with any provider. No conversion needed.
