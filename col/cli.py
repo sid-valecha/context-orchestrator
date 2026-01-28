@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
+from rich.tree import Tree
 
 from . import __version__
 from .config import load_config
@@ -80,10 +81,10 @@ def run(
         "--output", "-o",
         help="Path to save the response",
     ),
-    prompt: str = typer.Option(
+    instruction: str = typer.Option(
         ...,
-        "--prompt", "-q",
-        help="The user prompt/question",
+        "--instruction", "-i",
+        help="Ephemeral instruction (not stored in context, does not persist)",
     ),
 ):
     """Run a completion using the context. Stateless - does not modify context."""
@@ -119,7 +120,11 @@ def run(
     console.print(f"[dim]Running with {provider}...[/dim]")
     
     try:
-        response, metadata = run_completion(context, llm, prompt, output)
+        response, metadata = run_completion(context, llm, instruction, output)
+        
+        # Display prompt hash for reproducibility
+        prompt_hash = metadata.get("prompt_hash", "N/A")
+        console.print(f"[dim]Prompt hash:[/dim] {prompt_hash}")
         
         # Display the answer
         console.print("\n[bold]Answer:[/bold]")
@@ -213,12 +218,14 @@ def apply(
         console.print("[dim]All suggested items already exist in context.[/dim]")
         raise typer.Exit(0)
     
-    # Show diff
-    console.print("\n[bold]Changes to be applied:[/bold]")
+    # Show diff using tree visualization
+    console.print()
+    tree = Tree("[bold]Changes to be applied[/bold]")
     for field, items in changes.items():
-        console.print(f"\n[cyan]{field}:[/cyan]")
+        field_branch = tree.add(f"[cyan]{field}[/cyan]")
         for item in items:
-            console.print(f"  [green]+ {item}[/green]")
+            field_branch.add(f"[green]+ {item}[/green]")
+    console.print(tree)
     
     # Confirm
     if not yes:
@@ -275,6 +282,72 @@ def metrics(
     
     console.print(f"[dim]System prompt chars:[/dim] {char_count:,}")
     console.print(f"[dim]Estimated tokens:[/dim] ~{estimated_tokens:,}")
+
+
+@app.command()
+def validate(
+    context_file: Path = typer.Argument(
+        ...,
+        help="Path to the context JSON file to validate",
+    ),
+):
+    """Validate a context file against the schema.
+    
+    Developer utility for validating manually edited context files.
+    Does not affect runtime behavior.
+    """
+    # Check file exists
+    if not context_file.exists():
+        console.print(f"[red]Error:[/red] File not found: {context_file}", err=True)
+        raise typer.Exit(1)
+    
+    # Try to load and validate
+    try:
+        with open(context_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        console.print(f"[red]Invalid JSON:[/red] {e}", err=True)
+        raise typer.Exit(1)
+    
+    try:
+        context = Context.model_validate(data)
+        console.print(f"[green]Valid:[/green] {context_file}")
+        
+        # Show summary
+        console.print(f"  Goal: {'(set)' if context.goal else '(empty)'}")
+        console.print(f"  Constraints: {len(context.constraints)}")
+        console.print(f"  Facts: {len(context.facts)}")
+        console.print(f"  Decisions: {len(context.decisions)}")
+        console.print(f"  Tool Outputs: {len(context.tool_outputs)}")
+        console.print(f"  Open Questions: {len(context.open_questions)}")
+        
+    except Exception as e:
+        console.print(f"[red]Schema validation failed:[/red] {e}", err=True)
+        raise typer.Exit(1)
+
+
+@app.command()
+def schema(
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output", "-o",
+        help="Write schema to file instead of stdout",
+    ),
+):
+    """Export the Context JSON Schema.
+    
+    Developer utility to expose the locked schema for IDEs and tooling.
+    Not required for normal usage.
+    """
+    schema_json = json.dumps(Context.model_json_schema(), indent=2)
+    
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write(schema_json)
+            f.write("\n")
+        console.print(f"[green]Schema written to:[/green] {output_file}")
+    else:
+        console.print(schema_json)
 
 
 @app.command()
