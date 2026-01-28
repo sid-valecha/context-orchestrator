@@ -209,3 +209,8 @@ __marimo__/
 
 .cursor/
 .DS_Store
+
+# COL specific
+col.yaml
+*.json
+!col.yaml.example

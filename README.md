@@ -27,6 +27,8 @@ pip install -e .
 
 ## Configuration
 
+### API Keys (Required)
+
 Set your API keys as environment variables:
 
 ```bash
@@ -35,7 +37,16 @@ export ANTHROPIC_API_KEY="your-key"
 export GROQ_API_KEY="your-key"
 ```
 
-Optionally create a `col.yaml` in your working directory for defaults:
+### Optional: col.yaml
+
+Create a `col.yaml` in your working directory for defaults:
+
+```bash
+cp col.yaml.example col.yaml
+# Edit col.yaml with your preferred settings
+```
+
+Example configuration:
 
 ```yaml
 default_provider: openai  # or anthropic, groq
@@ -44,17 +55,9 @@ default_context_file: context.json
 default_output_file: response.json
 ```
 
-**How col.yaml works:**
-- Place it in your working directory (where you run `col` commands)
-- Settings override built-in defaults
-- Environment variables override file settings
-- CLI flags override everything
+**Configuration Priority:** CLI flags → Environment variables → col.yaml → Built-in defaults
 
-Priority (highest to lowest):
-1. CLI flags (e.g., `--provider openai`)
-2. Environment variables (e.g., `COL_DEFAULT_PROVIDER`)
-3. `col.yaml` settings
-4. Built-in defaults
+See [CONFIGURATION.md](CONFIGURATION.md) for detailed configuration options.
 
 ## Usage
 
