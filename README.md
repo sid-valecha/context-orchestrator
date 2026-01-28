@@ -276,6 +276,52 @@ col schema --output context-schema.json
 
 These are developer utilities and are not required for normal usage.
 
+## Using COL in Your Projects
+
+COL is released under the MIT License. You are free to use, modify, and distribute COL in any way you see fit, including incorporating it into commercial products. The MIT License grants you maximum freedom while preserving attribution.
+
+## Future Scope (Non-Binding)
+
+COL is intentionally minimal. Future work, if any, will preserve explicit context, user authority, and model-agnosticism.
+
+Potential directions (exploratory, not guaranteed):
+
+**LLM-assisted context proposals**
+- Improve how models suggest facts, decisions, and open questions (e.g., confidence scores, grouping, deduplication).
+- Context mutations would remain user-approved.
+
+**Context refactoring utilities**
+- Optional commands to propose cleaned or summarized context files (append-only, non-destructive, opt-in).
+
+**Rule-based context linting**
+- Deterministic checks for large contexts, redundancy, or missing constraints (no LLM required).
+
+**Enhanced diff and review UX**
+- Further improvements beyond the current tree visualization, such as side-by-side comparison views or interactive review modes for proposed context changes.
+
+**Additional provider adapters**
+- Support for more LLM providers behind the same interface (without changing the core schema).
+
+**Non-goals (will remain out of scope):**
+
+- Autonomous agents or execution loops
+- Hidden or implicit memory
+- Tool execution or orchestration
+- Vector databases, embeddings, or RAG as memory
+- Automatic context mutation without user approval
+
+## Contributing
+
+COL is open to focused pull requests that improve correctness, clarity, or ergonomics without expanding scope.
+
+Good PRs typically:
+
+- Improve determinism, validation, or error handling
+- Enhance documentation or demos
+- Add tests or developer tooling
+
+PRs that introduce agents, automation, or hidden state will not be accepted.
+
 ## License
 
 MIT
